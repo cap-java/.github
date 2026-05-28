@@ -1,0 +1,85 @@
+name: Deploy Release to Maven Central
+description: Deploys released artifacts to Maven Central repository with GPG signing.
+
+inputs:
+  user:
+    description: Technical user for Maven Central upload.
+    required: true
+  password:
+    description: Password for the Maven Central technical user.
+    required: true
+  pgp-pub-key:
+    description: The public PGP key ID.
+    required: true
+  pgp-private-key:
+    description: The private PGP key.
+    required: true
+  pgp-passphrase:
+    description: The passphrase for PGP.
+    required: true
+  revision:
+    description: The release version (typically the Git tag name).
+    required: true
+  maven-version:
+    description: The Maven version the build will run with.
+    required: true
+  cds-dk-version:
+    description: The @sap/cds-dk version to install globally.
+    required: false
+    default: '9.9.1'
+  maven-profiles:
+    description: Maven profiles to activate for the deploy (comma-separated).
+    required: false
+    default: 'deploy-release'
+  maven-extra-args:
+    description: Extra Maven arguments appended to the deploy command.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        distribution: sapmachine
+        java-version: '17'
+        cache: maven
+        server-id: central
+        server-username: MAVEN_CENTRAL_USER
+        server-password: MAVEN_CENTRAL_PASSWORD
+
+    - name: Set up Maven ${{ inputs.maven-version }}
+      uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
+      with:
+        maven-version: ${{ inputs.maven-version }}
+
+    - name: Install @sap/cds-dk
+      run: npm i -g @sap/cds-dk@${{ inputs.cds-dk-version }}
+      shell: bash
+
+    - name: Import GPG Key
+      run: |
+        echo "$PGP_PRIVATE_KEY" | gpg --batch --passphrase "$PASSPHRASE" --import
+      shell: bash
+      env:
+        PGP_PRIVATE_KEY: ${{ inputs.pgp-private-key }}
+        PASSPHRASE: ${{ inputs.pgp-passphrase }}
+
+    - name: Deploy to Maven Central
+      run: >
+        mvn -B -ntp --show-version
+        -Dmaven.install.skip=true
+        -Dmaven.test.skip=true
+        -Dcds.install-node.skip
+        -Dgpg.passphrase="$GPG_PASSPHRASE"
+        -Dgpg.keyname="$GPG_PUB_KEY"
+        clean deploy -P ${{ inputs.maven-profiles }}
+        ${{ inputs.maven-extra-args }}
+      shell: bash
+      env:
+        MAVEN_CENTRAL_USER: ${{ inputs.user }}
+        MAVEN_CENTRAL_PASSWORD: ${{ inputs.password }}
+        GPG_PASSPHRASE: ${{ inputs.pgp-passphrase }}
+        GPP_PUB_KEY: ${{ inputs.pgp-pub-key }}
+        GPG_PUB_KEY: ${{ inputs.pgp-pub-key }}

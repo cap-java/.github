@@ -1,0 +1,55 @@
+name: Cloud Foundry Login
+description: Installs the CF CLI and authenticates to a Cloud Foundry environment with retry logic.
+
+inputs:
+  cf-api:
+    description: Cloud Foundry API endpoint.
+    required: true
+  cf-username:
+    description: Cloud Foundry username.
+    required: true
+  cf-password:
+    description: Cloud Foundry password.
+    required: true
+  cf-org:
+    description: Cloud Foundry organization.
+    required: true
+  cf-space:
+    description: Cloud Foundry space.
+    required: true
+  cf-cli-version:
+    description: Version of the CF CLI to install.
+    required: false
+    default: '8.18.3'
+
+runs:
+  using: composite
+  steps:
+    - name: Install CF CLI
+      shell: bash
+      run: |
+        wget -q "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${{ inputs.cf-cli-version }}&source=github-rel" -O cf-cli.tar.gz
+        tar -xzf cf-cli.tar.gz
+        sudo mv cf8 /usr/local/bin/cf
+        cf --version
+
+    - name: CF Login
+      shell: bash
+      env:
+        CF_USERNAME: ${{ inputs.cf-username }}
+        CF_PASSWORD: ${{ inputs.cf-password }}
+        CF_API: ${{ inputs.cf-api }}
+        CF_ORG: ${{ inputs.cf-org }}
+        CF_SPACE: ${{ inputs.cf-space }}
+      run: |
+        for i in {1..5}; do
+          cf api "$CF_API" && \
+          cf auth && \
+          cf target -o "$CF_ORG" -s "$CF_SPACE" && break
+          if [ "$i" -eq 5 ]; then
+            echo "cf login failed after 5 attempts."
+            exit 1
+          fi
+          echo "cf login failed, retrying ($i/5)..."
+          sleep 10
+        done
