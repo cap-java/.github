@@ -180,6 +180,20 @@ jobs:
 
 ---
 
+## Dependency Management
+
+### GitHub Actions (pinned SHAs)
+
+All third-party actions are pinned by commit SHA. Dependabot is configured to propose updates automatically via the `github-actions` ecosystem.
+
+### `@sap/cds-dk` version
+
+The `cds-dk-version` input defaults are **not** automatically tracked by Dependabot (arbitrary YAML defaults are invisible to it). Instead, a `package.json` at the repo root declares `@sap/cds-dk` as a dependency solely for tracking purposes.
+
+When Dependabot opens a PR to bump the version in `package.json`, **manually update** the `default` value of `cds-dk-version` in all `actions/*/action.yml` files to match before merging.
+
+---
+
 ## Migration Guide
 
 To migrate a repository to use the centralized actions and workflows:
