@@ -178,51 +178,6 @@ jobs:
       issues: write
 ```
 
-### `.github/workflows/release.yml`
-
-Full release pipeline: approval gate, version verification, BlackDuck scan, build, and deploy to Maven Central.
-
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `java-version` | no | `17` | Java version |
-| `maven-version` | yes | - | Maven version |
-| `cds-dk-version` | no | `9.9.1` | `@sap/cds-dk` version |
-| `blackduck-project-name` | yes | - | BlackDuck project name |
-| `blackduck-included-modules` | yes | - | Comma-separated modules to scan |
-| `maven-build-args` | no | `''` | Extra args for build step |
-| `maven-deploy-profiles` | no | `deploy-release` | Deploy Maven profiles |
-| `maven-deploy-extra-args` | no | `''` | Extra args for deploy step |
-
-**Required secrets** (use `secrets: inherit`):
-- `BLACK_DUCK_TOKEN`
-- `CENTRAL_REPOSITORY_USER`
-- `CENTRAL_REPOSITORY_PASS`
-- `PGP_PUBKEY_ID`
-- `PGP_PRIVATE_KEY`
-- `PGP_PASSPHRASE`
-
-**Required environments:**
-- `release-approval` - manual approval gate
-- `release` - deployment environment
-
-**Caller example (cds-ai):**
-```yaml
-name: Deploy to Maven Central
-on:
-  release:
-    types: ["released"]
-jobs:
-  release:
-    uses: cap-java/.github/.github/workflows/release.yml@main
-    with:
-      maven-version: '3.9.15'
-      blackduck-project-name: com.sap.cds.cds-ai
-      blackduck-included-modules: cds-feature-ai-core,cds-feature-recommendations,cds-starter-ai
-      maven-build-args: "-P '!with-integration-tests'"
-      maven-deploy-profiles: "deploy-release,'!with-integration-tests'"
-    secrets: inherit
-```
-
 ---
 
 ## Migration Guide
@@ -231,9 +186,9 @@ To migrate a repository to use the centralized actions and workflows:
 
 1. **Replace local composite actions** with references to `cap-java/.github/actions/<name>@main`
 2. **Replace identical workflows** (issue, stale, prevent-labeling) with thin callers
-3. **Replace the release workflow** with a caller that passes project-specific inputs
-4. **Keep project-specific items** locally:
+3. **Keep project-specific items** locally:
    - `pipeline.yml` (project-specific CI jobs)
+   - `release.yml` (project-specific release pipeline)
    - `cf-bind` action (project-specific service bindings -- use `cf-login` for the shared part)
    - `integration-tests` action (project-specific test commands)
    - `dependabot.yml`, `CODEOWNERS`
