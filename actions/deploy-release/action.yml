@@ -8,14 +8,14 @@ inputs:
   password:
     description: Password for the Maven Central technical user.
     required: true
-  pgp-pub-key:
-    description: The public PGP key ID.
+  gpg-pub-key:
+    description: The public GPG key ID.
     required: true
-  pgp-private-key:
-    description: The private PGP key.
+  gpg-private-key:
+    description: The private GPG key.
     required: true
-  pgp-passphrase:
-    description: The passphrase for PGP.
+  gpg-passphrase:
+    description: The passphrase for GPG.
     required: true
   revision:
     description: The release version (typically the Git tag name).
@@ -60,11 +60,11 @@ runs:
 
     - name: Import GPG Key
       run: |
-        echo "$PGP_PRIVATE_KEY" | gpg --batch --passphrase "$PASSPHRASE" --import
+        echo "$GPG_PRIVATE_KEY" | gpg --batch --passphrase "$GPG_PASSPHRASE" --import
       shell: bash
       env:
-        PGP_PRIVATE_KEY: ${{ inputs.pgp-private-key }}
-        PASSPHRASE: ${{ inputs.pgp-passphrase }}
+        GPG_PRIVATE_KEY: ${{ inputs.gpg-private-key }}
+        GPG_PASSPHRASE: ${{ inputs.gpg-passphrase }}
 
     - name: Deploy to Maven Central
       run: >
@@ -80,6 +80,5 @@ runs:
       env:
         MAVEN_CENTRAL_USER: ${{ inputs.user }}
         MAVEN_CENTRAL_PASSWORD: ${{ inputs.password }}
-        GPG_PASSPHRASE: ${{ inputs.pgp-passphrase }}
-        GPP_PUB_KEY: ${{ inputs.pgp-pub-key }}
-        GPG_PUB_KEY: ${{ inputs.pgp-pub-key }}
+        GPG_PASSPHRASE: ${{ inputs.gpg-passphrase }}
+        GPG_PUB_KEY: ${{ inputs.gpg-pub-key }}
