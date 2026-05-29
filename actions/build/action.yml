@@ -1,0 +1,41 @@
+name: Maven Build
+description: Sets up Java, Maven, and cds-dk, then builds a Maven project.
+
+inputs:
+  java-version:
+    description: The Java version the build will run with.
+    required: true
+  maven-version:
+    description: The Maven version the build will run with.
+    required: true
+  cds-dk-version:
+    description: The @sap/cds-dk version to install globally.
+    required: false
+    default: '9.9.1'
+  maven-args:
+    description: Extra Maven arguments appended to the build command (e.g. profiles or flags).
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java ${{ inputs.java-version }}
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: sapmachine
+        cache: maven
+
+    - name: Set up Maven ${{ inputs.maven-version }}
+      uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
+      with:
+        maven-version: ${{ inputs.maven-version }}
+
+    - name: Install @sap/cds-dk
+      run: npm i -g @sap/cds-dk@${{ inputs.cds-dk-version }}
+      shell: bash
+
+    - name: Maven Build
+      run: mvn clean install -DskipTests -B -ntp -Dcds.install-node.skip ${{ inputs.maven-args }}
+      shell: bash

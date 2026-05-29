@@ -1,0 +1,70 @@
+name: CodeQL Analysis
+description: Runs GitHub CodeQL security analysis on the project.
+# The simple GitHub CodeQL setup cannot be used here because:
+# - It does not support the sapmachine JDK distribution or a pinned Maven version.
+# - CodeQL for Java traces the actual compilation (it does not do static file analysis). This project
+#   uses cds-maven-plugin, which invokes the 'cds' CLI (@sap/cds-dk) during generate-sources to
+#   compile .cds files into Java sources. Without @sap/cds-dk installed, the build fails and CodeQL
+#   captures nothing. autobuild would not handle this setup correctly.
+
+inputs:
+  java-version:
+    description: The Java version to use for the build.
+    required: true
+  maven-version:
+    description: The Maven version to use for the build.
+    required: true
+  language:
+    description: The CodeQL language to analyze (java-kotlin or actions).
+    required: true
+  queries:
+    description: Optional CodeQL query suite to use (e.g. security-extended).
+    required: false
+    default: ''
+  cds-dk-version:
+    description: The @sap/cds-dk version to install globally.
+    required: false
+    default: '9.9.1'
+  build-command:
+    description: Maven command to compile the project (used only for java-kotlin language).
+    required: false
+    default: 'mvn clean compile -B -ntp -Dcds.install-node.skip' # -Dcds.install-node.skip prevents the plugin from downloading Node.js redundantly
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java ${{ inputs.java-version }}
+      if: inputs.language == 'java-kotlin'
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: sapmachine
+        cache: maven
+
+    - name: Set up Maven ${{ inputs.maven-version }}
+      if: inputs.language == 'java-kotlin'
+      uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
+      with:
+        maven-version: ${{ inputs.maven-version }}
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@ed410739ba306e4ebe5e123421a6bd694e494a2b # v4
+      with:
+        languages: ${{ inputs.language }}
+        build-mode: ${{ inputs.language == 'java-kotlin' && 'manual' || 'none' }}
+        queries: ${{ inputs.queries || '' }}
+
+    - name: Install @sap/cds-dk
+      if: inputs.language == 'java-kotlin'
+      run: npm i -g @sap/cds-dk@${{ inputs.cds-dk-version }}
+      shell: bash
+
+    - name: Build Java code
+      if: inputs.language == 'java-kotlin'
+      run: ${{ inputs.build-command }}
+      shell: bash
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@ed410739ba306e4ebe5e123421a6bd694e494a2b # v4
+      with:
+        category: "/language:${{ inputs.language }}"

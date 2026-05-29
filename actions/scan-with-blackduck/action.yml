@@ -1,0 +1,114 @@
+name: Scan with BlackDuck
+description: Runs a BlackDuck SCA scan with configurable project settings.
+
+inputs:
+  blackduck_url:
+    description: BlackDuck server URL.
+    required: false
+    default: 'https://sap.blackducksoftware.com/'
+  blackduck_token:
+    description: Token for BlackDuck authentication.
+    required: true
+  maven-version:
+    description: The Maven version the build shall run with.
+    required: true
+  project-name:
+    description: The BlackDuck project name (e.g. com.sap.cds.feature.attachments).
+    required: true
+  included-modules:
+    description: Comma-separated list of Maven modules to include in the scan.
+    required: true
+  java-version:
+    description: The version of Java to use.
+    required: false
+    default: '17'
+  version:
+    description: >
+      The project version to report to BlackDuck (e.g. release tag).
+      If empty, falls back to the Maven revision property reduced to major.minor.
+    required: false
+    default: ''
+  scan_mode:
+    description: >
+      The scan mode: FULL uploads a report to the BlackDuck server;
+      RAPID is a fast policy gate without server upload.
+      A FULL scan is recommended for scans on main and before release, a RAPID with rapid_compare_mode BOM_COMPARE for PRs. 
+    required: false
+    default: 'FULL'
+  rapid_compare_mode:
+    description: >
+      Enables Rapid Scan compare mode (e.g. BOM_COMPARE or BOM_COMPARE_STRICT).
+      Only relevant when scan_mode is RAPID.
+    required: false
+    default: ''
+  github_token:
+    description: GitHub token for PR comment integration (optional).
+    required: false
+    default: ''
+  user-groups:
+    description: BlackDuck user groups for the project.
+    required: false
+    default: 'CDSJAVA-OPEN-SOURCE'
+  excluded-dirs:
+    description: Comma-separated directory patterns to exclude from the scan.
+    required: false
+    default: '**/*test*,**/samples/**'
+  excluded-scopes:
+    description: Comma-separated Maven scopes to exclude.
+    required: false
+    default: 'test,provided'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java ${{ inputs.java-version }}
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: sapmachine
+        cache: maven
+
+    - name: Set up Maven ${{ inputs.maven-version }}
+      uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
+      with:
+        maven-version: ${{ inputs.maven-version }}
+
+    - name: Resolve Project Version
+      id: resolve-version
+      env:
+        VERSION_INPUT: ${{ inputs.version }}
+      run: |
+        if [ -n "$VERSION_INPUT" ]; then
+          VERSION="$VERSION_INPUT"
+        else
+          REVISION=$(mvn help:evaluate -Dexpression=revision -q -DforceStdout)
+          VERSION=$(echo "$REVISION" | cut -d. -f1,2)
+        fi
+        echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Resolved BlackDuck project version: $VERSION"
+      shell: bash
+
+    - name: BlackDuck Security Scan
+      uses: blackduck-inc/black-duck-security-scan@659a0742e793a093377fab3117b0d90f23b04bfa # v2.9.0
+      with:
+        blackducksca_url: ${{ inputs.blackduck_url }}
+        blackducksca_token: ${{ inputs.blackduck_token }}
+        blackducksca_scan_full: ${{ inputs.scan_mode == 'FULL' }}
+        github_token: ${{ inputs.github_token || '' }}
+        detect_args: >
+          --detect.project.name=${{ inputs.project-name }}
+          --detect.project.version.name=${{ steps.resolve-version.outputs.VERSION }}
+          --detect.project.user.groups=${{ inputs.user-groups }}
+          --detect.included.detector.types=MAVEN
+          --detect.excluded.directories=${{ inputs.excluded-dirs }}
+          --detect.maven.included.modules=${{ inputs.included-modules }}
+          --detect.maven.excluded.scopes=${{ inputs.excluded-scopes }}
+          --detect.tools=DETECTOR,BINARY_SCAN
+          --detect.timeout=6000
+          --detect.risk.report.pdf=false
+          --detect.policy.check.fail.on.severities=NONE
+          --detect.force.success.on.skip=true
+          --blackduck.signature.scanner.memory=4096
+          --blackduck.trust.cert=true
+          --logging.level.detect=INFO
+          ${{ inputs.rapid_compare_mode != '' && format('--detect.blackduck.rapid.compare.mode={0}', inputs.rapid_compare_mode) || '' }}

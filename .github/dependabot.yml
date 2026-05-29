@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - "/.github/workflows"
+      - "/actions/**"
+    schedule:
+      interval: weekly
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # Tracks @sap/cds-dk version in package.json.
+  # When Dependabot opens a PR here, update the default value of
+  # cds-dk-version in all actions/*.yml files to match.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: "@sap/cds-dk"

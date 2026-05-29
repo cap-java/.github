@@ -1,0 +1,104 @@
+name: Scan with SonarQube
+description: >
+  Builds the project with coverage, verifies JaCoCo reports, and runs a SonarQube scan.
+  The caller provides a build-script to produce coverage reports before the scan runs.
+
+inputs:
+  sonarq-token:
+    description: Token for SonarQube authentication.
+    required: true
+  github-token:
+    description: Token for GitHub authentication.
+    required: true
+  java-version:
+    description: The version of Java to use.
+    required: true
+  maven-version:
+    description: The version of Maven to use.
+    required: true
+  sonar-project-key:
+    description: The SonarQube project key.
+    required: true
+  sonar-host-url:
+    description: The SonarQube server URL.
+    required: false
+    default: 'https://sonar.tools.sap/'
+  coverage-report-path:
+    description: Path to the aggregate JaCoCo XML report (relative to workspace root).
+    required: true
+  build-script:
+    description: >
+      Shell script to build the project and produce coverage reports.
+      Runs before the SonarQube scan. Can be multi-line.
+    required: true
+  exclusions:
+    description: Comma-separated patterns for sonar.exclusions.
+    required: false
+    default: '**/samples/**'
+  coverage-exclusions:
+    description: Comma-separated patterns for sonar.coverage.exclusions.
+    required: false
+    default: '**/src/test/**,**/src/gen/**'
+  cds-dk-version:
+    description: The @sap/cds-dk version to install globally.
+    required: false
+    default: '9.9.1'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java ${{ inputs.java-version }}
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: sapmachine
+        cache: maven
+
+    - name: Set up Maven ${{ inputs.maven-version }}
+      uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
+      with:
+        maven-version: ${{ inputs.maven-version }}
+
+    - name: Install @sap/cds-dk
+      run: npm i -g @sap/cds-dk@${{ inputs.cds-dk-version }}
+      shell: bash
+
+    - name: Get Revision
+      id: get-revision
+      run: |
+        echo "REVISION=$(mvn help:evaluate -Dexpression=revision -q -DforceStdout)" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Build project with coverage
+      run: ${{ inputs.build-script }}
+      shell: bash
+
+    - name: Verify JaCoCo reports exist
+      run: |
+        echo "=== Checking JaCoCo reports ==="
+        find . -name "jacoco.xml" -type f
+        if [ -f "${{ inputs.coverage-report-path }}" ]; then
+          echo "Found: ${{ inputs.coverage-report-path }}"
+        else
+          echo "Missing: ${{ inputs.coverage-report-path }}"
+          exit 1
+        fi
+      shell: bash
+
+    - name: SonarQube Scan
+      run: >
+        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+        -Dsonar.host.url=${{ inputs.sonar-host-url }}
+        -Dsonar.token="${SONAR_TOKEN}"
+        -Dsonar.projectKey=${{ inputs.sonar-project-key }}
+        -Dsonar.projectVersion=${{ steps.get-revision.outputs.REVISION }}
+        -Dsonar.qualitygate.wait=true
+        -Dsonar.java.source=17
+        -Dsonar.exclusions=${{ inputs.exclusions }}
+        -Dsonar.coverage.jacoco.xmlReportPaths=${{ github.workspace }}/${{ inputs.coverage-report-path }}
+        -Dsonar.coverage.exclusions=${{ inputs.coverage-exclusions }}
+        -B -ntp
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SONAR_TOKEN: ${{ inputs.sonarq-token }}
