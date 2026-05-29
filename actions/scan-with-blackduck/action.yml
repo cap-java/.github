@@ -28,6 +28,7 @@ inputs:
     description: >
       The scan mode: FULL uploads a report to the BlackDuck server;
       RAPID is a fast policy gate without server upload.
+      A FULL scan is recommended for scans on main and before release, a RAPID with rapid_compare_mode BOM_COMPARE for PRs. 
     required: false
     default: 'FULL'
   rapid_compare_mode:
