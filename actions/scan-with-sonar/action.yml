@@ -19,6 +19,10 @@ inputs:
   sonar-project-key:
     description: The SonarQube project key.
     required: true
+  sonar-host-url:
+    description: The SonarQube server URL.
+    required: false
+    default: 'https://sonar.tools.sap/'
   coverage-report-path:
     description: Path to the aggregate JaCoCo XML report (relative to workspace root).
     required: true
@@ -84,7 +88,7 @@ runs:
     - name: SonarQube Scan
       run: >
         mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
-        -Dsonar.host.url=https://sonar.tools.sap
+        -Dsonar.host.url=${{ inputs.sonar-host-url }}
         -Dsonar.token="${SONAR_TOKEN}"
         -Dsonar.projectKey=${{ inputs.sonar-project-key }}
         -Dsonar.projectVersion=${{ steps.get-revision.outputs.REVISION }}

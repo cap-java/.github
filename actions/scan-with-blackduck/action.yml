@@ -2,6 +2,10 @@ name: Scan with BlackDuck
 description: Runs a BlackDuck SCA scan with configurable project settings.
 
 inputs:
+  blackduck_url:
+    description: BlackDuck server URL.
+    required: false
+    default: 'https://sap.blackducksoftware.com/'
   blackduck_token:
     description: Token for BlackDuck authentication.
     required: true
@@ -28,6 +32,7 @@ inputs:
     description: >
       The scan mode: FULL uploads a report to the BlackDuck server;
       RAPID is a fast policy gate without server upload.
+      A FULL scan is recommended for scans on main and before release, a RAPID with rapid_compare_mode BOM_COMPARE for PRs. 
     required: false
     default: 'FULL'
   rapid_compare_mode:
@@ -86,7 +91,7 @@ runs:
     - name: BlackDuck Security Scan
       uses: blackduck-inc/black-duck-security-scan@659a0742e793a093377fab3117b0d90f23b04bfa # v2.9.0
       with:
-        blackducksca_url: https://sap.blackducksoftware.com/
+        blackducksca_url: ${{ inputs.blackduck_url }}
         blackducksca_token: ${{ inputs.blackduck_token }}
         blackducksca_scan_full: ${{ inputs.scan_mode == 'FULL' }}
         github_token: ${{ inputs.github_token || '' }}
