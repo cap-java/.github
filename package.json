@@ -3,6 +3,6 @@
   "name": "@cap-java/github-actions",
   "description": "Version tracking for shared GitHub Actions dependencies. This package.json is not used at runtime -- it exists solely so Dependabot can propose version updates for dependencies used in composite actions.",
   "dependencies": {
-    "@sap/cds-dk": "9.9.1"
+    "@sap/cds-dk": "9.9.2"
   }
 }
