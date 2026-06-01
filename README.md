@@ -33,9 +33,9 @@ Deploys artifacts to Maven Central with GPG signing.
 |-------|----------|---------|-------------|
 | `user` | yes | - | Maven Central username |
 | `password` | yes | - | Maven Central password |
-| `pgp-pub-key` | yes | - | GPG public key ID |
-| `pgp-private-key` | yes | - | GPG private key |
-| `pgp-passphrase` | yes | - | GPG passphrase |
+| `gpg-pub-key` | yes | - | GPG public key ID |
+| `gpg-private-key` | yes | - | GPG private key |
+| `gpg-passphrase` | yes | - | GPG passphrase |
 | `revision` | yes | - | Release version (Git tag) |
 | `maven-version` | yes | - | Maven version |
 | `cds-dk-version` | no | `9.9.1` | `@sap/cds-dk` version |
