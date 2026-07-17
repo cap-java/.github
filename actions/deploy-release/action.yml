@@ -2,6 +2,10 @@ name: Deploy Release to Maven Central
 description: Deploys released artifacts to Maven Central repository with GPG signing.
 
 inputs:
+  java-version:
+    description: The Java version the deploy will run with.
+    required: false
+    default: '17'
   user:
     description: Technical user for Maven Central upload.
     required: true
@@ -39,11 +43,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Set up Java
+    - name: Set up Java ${{ inputs.java-version }}
       uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
       with:
         distribution: sapmachine
-        java-version: '17'
+        java-version: ${{ inputs.java-version }}
         cache: maven
         server-id: central
         server-username: MAVEN_CENTRAL_USER
