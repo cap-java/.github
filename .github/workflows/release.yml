@@ -112,7 +112,7 @@ jobs:
           ref: ${{ github.event.release.tag_name }}
 
       - name: Scan With Black Duck
-        uses: ./actions/scan-with-blackduck
+        uses: cap-java/.github/actions/scan-with-blackduck@main
         with:
           blackduck_token: ${{ secrets.BLACK_DUCK_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -136,7 +136,7 @@ jobs:
           ref: ${{ github.event.release.tag_name }}
 
       - name: Build
-        uses: ./actions/build
+        uses: cap-java/.github/actions/build@main
         with:
           java-version: ${{ inputs.java-version }}
           maven-version: ${{ inputs.maven-version }}
@@ -157,7 +157,7 @@ jobs:
           ref: ${{ github.event.release.tag_name }}
 
       - name: Deploy
-        uses: ./actions/deploy-release
+        uses: cap-java/.github/actions/deploy-release@main
         with:
           user: ${{ secrets.CENTRAL_REPOSITORY_USER }}
           password: ${{ secrets.CENTRAL_REPOSITORY_PASS }}
