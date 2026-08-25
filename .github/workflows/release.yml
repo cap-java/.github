@@ -1,0 +1,165 @@
+name: Deploy to Maven Central
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: Java version to use for the build and deploy.
+        required: false
+        default: '21'
+        type: string
+      maven-version:
+        description: Maven version to use.
+        required: false
+        default: '3.9.16'
+        type: string
+      blackduck-project-name:
+        description: BlackDuck project name (e.g. com.sap.cds.feature.attachments).
+        required: true
+        type: string
+      blackduck-included-modules:
+        description: Comma-separated Maven modules to include in the BlackDuck scan.
+        required: true
+        type: string
+      build-maven-args:
+        description: Extra Maven arguments for the build step (e.g. to exclude profiles).
+        required: false
+        default: ''
+        type: string
+      deploy-maven-profiles:
+        description: Maven profiles to activate for the deploy step.
+        required: false
+        default: 'deploy-release'
+        type: string
+    secrets:
+      BLACK_DUCK_TOKEN:
+        required: true
+      CENTRAL_REPOSITORY_USER:
+        required: true
+      CENTRAL_REPOSITORY_PASS:
+        required: true
+      PGP_PUBKEY_ID:
+        required: true
+      PGP_PRIVATE_KEY:
+        required: true
+      PGP_PASSPHRASE:
+        required: true
+
+jobs:
+  requires-approval:
+    runs-on: ubuntu-latest
+    name: "Waiting for release approval"
+    environment: release-approval
+    permissions:
+      contents: read
+    steps:
+      - name: Approval Step
+        run: echo "Release has been approved!"
+
+  verify-version:
+    needs: requires-approval
+    name: Verify Version Matches Tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Java
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: sapmachine
+          cache: maven
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
+        with:
+          maven-version: ${{ inputs.maven-version }}
+
+      - name: Verify pom.xml revision matches release tag
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          REVISION=$(mvn help:evaluate -Dexpression=revision -q -DforceStdout)
+          echo "Tag:      $TAG"
+          echo "Revision: $REVISION"
+          if [ "$TAG" != "$REVISION" ]; then
+            echo "::error::Release tag '$TAG' does not match pom.xml <revision> '$REVISION'. Open a 'Prep release' PR to bump the version before tagging."
+            exit 1
+          fi
+        shell: bash
+
+  blackduck:
+    needs: verify-version
+    name: Blackduck Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Scan With Black Duck
+        uses: ./actions/scan-with-blackduck
+        with:
+          blackduck_token: ${{ secrets.BLACK_DUCK_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          maven-version: ${{ inputs.maven-version }}
+          java-version: ${{ inputs.java-version }}
+          project-name: ${{ inputs.blackduck-project-name }}
+          included-modules: ${{ inputs.blackduck-included-modules }}
+          version: ${{ github.event.release.tag_name }}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: verify-version
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Build
+        uses: ./actions/build
+        with:
+          java-version: ${{ inputs.java-version }}
+          maven-version: ${{ inputs.maven-version }}
+          maven-args: ${{ inputs.build-maven-args }}
+
+  deploy:
+    name: Deploy to Maven Central
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [blackduck, build]
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Deploy
+        uses: ./actions/deploy-release
+        with:
+          user: ${{ secrets.CENTRAL_REPOSITORY_USER }}
+          password: ${{ secrets.CENTRAL_REPOSITORY_PASS }}
+          gpg-pub-key: ${{ secrets.PGP_PUBKEY_ID }}
+          gpg-private-key: ${{ secrets.PGP_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.PGP_PASSPHRASE }}
+          revision: ${{ github.event.release.tag_name }}
+          java-version: ${{ inputs.java-version }}
+          maven-version: ${{ inputs.maven-version }}
+          maven-profiles: ${{ inputs.deploy-maven-profiles }}
