@@ -62,7 +62,7 @@ runs:
   using: composite
   steps:
     - name: Set up Java ${{ inputs.java-version }}
-      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
       with:
         java-version: ${{ inputs.java-version }}
         distribution: sapmachine
@@ -89,7 +89,7 @@ runs:
       shell: bash
 
     - name: BlackDuck Security Scan
-      uses: blackduck-inc/black-duck-security-scan@659a0742e793a093377fab3117b0d90f23b04bfa # v2.9.0
+      uses: blackduck-inc/black-duck-security-scan@83489e3ec6c7c3367d114f96f59088530191d98b # v2.10.1
       with:
         blackducksca_url: ${{ inputs.blackduck_url }}
         blackducksca_token: ${{ inputs.blackduck_token }}
