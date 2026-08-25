@@ -32,18 +32,23 @@ on:
         default: 'deploy-release'
         type: string
     secrets:
+      # This secret must be configured as a repository secret, this is visible at call-time
+      # so we set required: true
       BLACK_DUCK_TOKEN:
         required: true
+      # The following secrets must be configured as environment secrets on the 'release' environment,
+      # not as repository secrets — we set required: false to bypass call-time validation, since at
+      # call time, we are not in the release environment.
       CENTRAL_REPOSITORY_USER:
-        required: true
+        required: false
       CENTRAL_REPOSITORY_PASS:
-        required: true
+        required: false
       PGP_PUBKEY_ID:
-        required: true
+        required: false
       PGP_PRIVATE_KEY:
-        required: true
+        required: false
       PGP_PASSPHRASE:
-        required: true
+        required: false
 
 jobs:
   requires-approval:
