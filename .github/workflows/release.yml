@@ -21,6 +21,11 @@ on:
         description: Comma-separated Maven modules to include in the BlackDuck scan.
         required: true
         type: string
+      blackduck-scan-mode:
+        description: BlackDuck scan mode (FULL or RAPID).
+        required: false
+        default: 'FULL'
+        type: string
       build-maven-args:
         description: Extra Maven arguments for the build step (e.g. to exclude profiles).
         required: false
@@ -120,6 +125,7 @@ jobs:
           java-version: ${{ inputs.java-version }}
           project-name: ${{ inputs.blackduck-project-name }}
           included-modules: ${{ inputs.blackduck-included-modules }}
+          scan_mode: ${{ inputs.blackduck-scan-mode }}
           version: ${{ github.event.release.tag_name }}
 
   build:
